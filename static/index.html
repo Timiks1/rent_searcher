@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Фильтр Аренды Жилья</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Фильтр объявлений об аренде</h1>
+            <p class="subtitle">Поиск жилья из Telegram канала</p>
+        </header>
+
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-item">
+                <span class="stat-label">Всего объявлений:</span>
+                <span class="stat-value" id="totalMessages">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">С ценой:</span>
+                <span class="stat-value" id="messagesWithPrice">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">С локацией:</span>
+                <span class="stat-value" id="messagesWithLocation">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Обновлено:</span>
+                <span class="stat-value" id="cacheAge">-</span>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <h2>Настройки и фильтры</h2>
+            
+            <div class="channel-section">
+                <div class="filter-group channel-input-group">
+                    <label for="channelName">
+                        📺 Telegram канал
+                        <span class="hint">(например: @arenda_kvartir)</span>
+                    </label>
+                    <div class="input-with-button">
+                        <input type="text" id="channelName" placeholder="@channel_name">
+                        <button class="btn btn-icon" onclick="saveChannel()" title="Сохранить канал">
+                            💾
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Фильтры поиска</h3>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="minPrice">Минимальная цена (млн VND или USD)</label>
+                    <input type="number" id="minPrice" placeholder="От 0">
+                </div>
+                <div class="filter-group">
+                    <label for="maxPrice">Максимальная цена (млн VND или USD)</label>
+                    <input type="number" id="maxPrice" placeholder="До ∞">
+                </div>
+                <div class="filter-group">
+                    <label for="location">
+                        Включить локации (whitelist)
+                        <span class="hint">только с этими районами</span>
+                    </label>
+                    <input type="text" id="location" placeholder="Mỹ An, An Thượng...">
+                </div>
+                <div class="filter-group">
+                    <label for="excludeAreas">
+                        ⛔ Исключить районы (blacklist)
+                        <span class="hint">поиск по всему тексту, через запятую</span>
+                    </label>
+                    <input type="text" id="excludeAreas" placeholder="my an, hoa hai, khue my...">
+                </div>
+                <div class="filter-group">
+                    <label for="sortBy">
+                        📊 Сортировка
+                        <span class="hint">порядок отображения</span>
+                    </label>
+                    <select id="sortBy" class="sort-select">
+                        <option value="date_desc">Сначала новые</option>
+                        <option value="date_asc">Сначала старые</option>
+                        <option value="price_desc">Цена: от большей к меньшей</option>
+                        <option value="price_asc">Цена: от меньшей к большей</option>
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn btn-primary" onclick="applyFilters()">
+                        🔍 Применить фильтры
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetFilters()">
+                        ↺ Сбросить
+                    </button>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-success" onclick="refreshMessages()">
+                    ⟳ Обновить сообщения
+                </button>
+                <button class="btn btn-info" onclick="loadChannelInfo()">
+                    ℹ️ Информация о канале
+                </button>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <div class="results-header">
+                <h2>Результаты</h2>
+                <span class="results-count" id="resultsCount">0 объявлений</span>
+            </div>
+            <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <p>Загрузка...</p>
+            </div>
+            <div id="messagesList" class="messages-list">
+                <div class="empty-state">
+                    <p>Нажмите "Обновить сообщения" для загрузки объявлений</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="channelInfoModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Информация о канале</h2>
+            <div id="channelInfoContent"></div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
