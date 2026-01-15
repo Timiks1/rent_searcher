@@ -94,12 +94,8 @@ async def get_current_channel():
         "source": "runtime" if telegram_client.channel_name != os.getenv('TELEGRAM_CHANNEL') else "env"
     }
 
-@app.post("/api/fetch-messages")
-async def fetch_messages(
-    days: int = Query(30, ge=1, le=90),
-    channel: Optional[str] = Query(None)
-):
-    """Fetch messages from Telegram channel
+async def _fetch_and_cache_messages(days: int = 30, channel: Optional[str] = None):
+    """Internal helper function to fetch and cache messages
     
     FAIL FAST: Let errors propagate
     """
@@ -108,8 +104,19 @@ async def fetch_messages(
     if channel:
         telegram_client.channel_name = channel
     
+    # FAIL FAST: Channel name must be set
+    if not telegram_client.channel_name:
+        raise HTTPException(
+            status_code=400,
+            detail="Telegram channel not configured. Please set TELEGRAM_CHANNEL in .env file or provide 'channel' parameter."
+        )
+    
     # Fetch and parse messages
-    messages = await telegram_client.fetch_messages(days=days)
+    try:
+        messages = await telegram_client.fetch_messages(days=days)
+    except ValueError as e:
+        # Convert ValueError to HTTPException for better API responses
+        raise HTTPException(status_code=400, detail=str(e))
     
     parsed_messages = []
     for msg in messages:
@@ -126,6 +133,17 @@ async def fetch_messages(
         "total_messages": len(parsed_messages),
         "cache_updated": cache_timestamp.isoformat()
     }
+
+@app.post("/api/fetch-messages")
+async def fetch_messages(
+    days: int = Query(30, ge=1, le=90),
+    channel: Optional[str] = Query(None)
+):
+    """Fetch messages from Telegram channel
+    
+    FAIL FAST: Let errors propagate
+    """
+    return await _fetch_and_cache_messages(days=days, channel=channel)
 
 @app.get("/api/photo/{message_id}")
 async def download_photo(message_id: int):
@@ -155,7 +173,7 @@ async def get_messages(
     if refresh or not messages_cache or not cache_timestamp or \
        (datetime.now() - cache_timestamp).total_seconds() > CACHE_DURATION_MINUTES * 60:
         # FAIL FAST: If this fails, let it crash
-        await fetch_messages(days=30)
+        await _fetch_and_cache_messages(days=30)
     
     # Filter messages
     filtered_messages = message_parser.filter_messages(
