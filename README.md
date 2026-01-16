@@ -4,7 +4,7 @@ A web application for filtering rental property listings from Telegram channels 
 
 ## Features
 
-- 📥 Automatic message fetching from Telegram channels (last 30 days)
+- 📥 Automatic message fetching from **multiple Telegram channels** simultaneously (last 30 days)
 - 💰 Price filtering (minimum and maximum)
 - 📍 Location search (city, district, area)
 - 🚫 Area exclusion (blacklist unwanted locations)
@@ -13,7 +13,8 @@ A web application for filtering rental property listings from Telegram channels 
 - 🎨 Modern web interface
 - 📊 Statistics dashboard
 - ⚡ Data caching for fast access
-- 🌐 Dynamic channel switching
+- 🌐 Dynamic multi-channel management
+- 📺 Channel source display for each listing
 
 ## Requirements
 
@@ -113,8 +114,8 @@ Open your browser and go to: http://localhost:8000
 
 ### Web Interface
 
-1. **Set Telegram Channel** - enter channel name (e.g., `@arenda_kvartir`) and click 💾
-2. **Refresh Messages** - fetch latest messages from the specified channel
+1. **Set Telegram Channels** - enter multiple channel names (one per line, e.g., `@arenda_kvartir`) and click 💾
+2. **Refresh Messages** - fetch latest messages from **all specified channels simultaneously**
 3. **Set Filters**:
    - Minimum price (VND/USD)
    - Maximum price (VND/USD)
@@ -124,7 +125,8 @@ Open your browser and go to: http://localhost:8000
 5. **Sort** - by date or price (ascending/descending)
 6. **Reset** - clear all filters
 
-💡 **Channel can be changed dynamically** in the web interface - no need to edit `.env` file!
+💡 **Multiple channels can be managed dynamically** in the web interface - no need to edit `.env` file!
+📺 **Each listing shows its source channel** so you know where it came from.
 
 ### API Endpoints
 
@@ -132,8 +134,8 @@ The application provides a REST API:
 
 - `GET /` - Main page (web interface)
 - `GET /api/channel-info?channel=@name` - Get channel information
-- `GET /api/current-channel` - Get currently configured channel
-- `POST /api/fetch-messages?days=30&channel=@name` - Fetch messages for N days
+- `GET /api/current-channels` - Get currently configured channels
+- `POST /api/fetch-messages` - Fetch messages from multiple channels (JSON body: `{"channels": ["@ch1", "@ch2"], "days": 30}`)
 - `GET /api/messages?min_price=X&max_price=Y&location=Z` - Get filtered messages
 - `GET /api/photo/{message_id}` - Download photo (lazy loading)
 - `GET /api/stats` - Statistics for loaded messages
@@ -156,8 +158,10 @@ curl "http://localhost:8000/api/messages?exclude_areas=Son+Tra,Lien+Chieu"
 # Combined filter with sorting
 curl "http://localhost:8000/api/messages?min_price=10000000&max_price=15000000&location=My+An&sort_by=price_asc"
 
-# Refresh messages from Telegram
-curl -X POST "http://localhost:8000/api/fetch-messages?channel=@DaNangApartmentRent"
+# Refresh messages from multiple Telegram channels
+curl -X POST "http://localhost:8000/api/fetch-messages" \
+  -H "Content-Type: application/json" \
+  -d '{"channels": ["@DaNangApartmentRent", "@VietnamRentals"], "days": 30}'
 ```
 
 ## Project Structure

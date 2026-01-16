@@ -2,22 +2,27 @@ const API_BASE = '';
 
 // State
 let currentMessages = [];
+let channels = []; // Array of channel names
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadStats();
-    loadCurrentChannel();
-    
-    // Load saved channel from localStorage
-    const savedChannel = localStorage.getItem('telegram_channel');
-    if (savedChannel) {
-        document.getElementById('channelName').value = savedChannel;
+    loadCurrentChannels();
+
+    // Load saved channels from localStorage
+    const savedChannels = localStorage.getItem('telegram_channels');
+    if (savedChannels) {
+        try {
+            channels = JSON.parse(savedChannels);
+            renderChannelsList();
+        } catch (e) {
+            channels = [];
+        }
     }
-    
-    // Auto-load messages on start if channel is set
+
+    // Auto-load messages on start if channels are set
     setTimeout(() => {
-        const channelInput = document.getElementById('channelName').value;
-        if (channelInput) {
+        if (channels.length > 0) {
             applyFilters();
         }
     }, 500);
@@ -86,77 +91,120 @@ async function applyFilters() {
     }
 }
 
-// Save channel to localStorage and update backend
-async function saveChannel() {
-    const channel = document.getElementById('channelName').value.trim();
-    
-    if (!channel) {
+// Add channel to the list
+function addChannel() {
+    const input = document.getElementById('channelInput');
+    const channelName = input.value.trim();
+
+    if (!channelName) {
         showNotification('Введите имя канала', 'error');
         return;
     }
-    
+
     // Validate channel format
-    if (!channel.startsWith('@') && !channel.match(/^-?\d+$/)) {
+    if (!channelName.startsWith('@') && !channelName.match(/^-?\d+$/)) {
         showNotification('Канал должен начинаться с @ или быть ID', 'error');
         return;
     }
-    
-    // Save to localStorage
-    localStorage.setItem('telegram_channel', channel);
-    showNotification(`Канал ${channel} сохранён!`, 'success');
-    
-    // Load channel info to verify
-    try {
-        const response = await fetch(`${API_BASE}/api/channel-info?channel=${encodeURIComponent(channel)}`);
-        if (response.ok) {
-            const info = await response.json();
-            showNotification(`Подключено к: ${info.title || channel}`, 'success');
-        }
-    } catch (error) {
-        console.error('Error verifying channel:', error);
+
+    // Check if channel already exists
+    if (channels.includes(channelName)) {
+        showNotification('Этот канал уже добавлен', 'error');
+        return;
     }
+
+    // Add to array
+    channels.push(channelName);
+
+    // Save to localStorage
+    localStorage.setItem('telegram_channels', JSON.stringify(channels));
+
+    // Clear input
+    input.value = '';
+
+    // Re-render list
+    renderChannelsList();
+
+    showNotification(`Канал ${channelName} добавлен`, 'success');
 }
 
-// Load current channel from backend
-async function loadCurrentChannel() {
+// Remove channel from the list
+function removeChannel(channelName) {
+    channels = channels.filter(ch => ch !== channelName);
+
+    // Save to localStorage
+    localStorage.setItem('telegram_channels', JSON.stringify(channels));
+
+    // Re-render list
+    renderChannelsList();
+
+    showNotification(`Канал ${channelName} удалён`, 'success');
+}
+
+// Render channels list
+function renderChannelsList() {
+    const container = document.getElementById('channelsList');
+
+    if (channels.length === 0) {
+        container.innerHTML = '<div class="empty-channels">Нет добавленных каналов</div>';
+        return;
+    }
+
+    container.innerHTML = channels.map(channel => `
+        <div class="channel-item">
+            <span class="channel-name">📺 ${channel}</span>
+            <button class="btn-remove" onclick="removeChannel('${channel}')" title="Удалить канал">
+                ✕
+            </button>
+        </div>
+    `).join('');
+}
+
+// Load current channels from backend
+async function loadCurrentChannels() {
     try {
-        const response = await fetch(`${API_BASE}/api/current-channel`);
+        const response = await fetch(`${API_BASE}/api/current-channels`);
         const data = await response.json();
-        
-        const channelInput = document.getElementById('channelName');
-        if (!channelInput.value && data.channel) {
-            channelInput.value = data.channel;
+
+        if (channels.length === 0 && data.channels && data.channels.length > 0) {
+            channels = data.channels;
+            localStorage.setItem('telegram_channels', JSON.stringify(channels));
+            renderChannelsList();
         }
     } catch (error) {
-        console.error('Error loading current channel:', error);
+        console.error('Error loading current channels:', error);
     }
 }
 
 // Refresh messages from Telegram
 async function refreshMessages() {
-    const channel = document.getElementById('channelName').value.trim();
-    
-    if (!channel) {
-        showNotification('Сначала укажите канал!', 'error');
-        document.getElementById('channelName').focus();
+    if (channels.length === 0) {
+        showNotification('Сначала добавьте хотя бы один канал!', 'error');
+        document.getElementById('channelInput').focus();
         return;
     }
-    
+
     showLoading(true);
-    showNotification('Загрузка сообщений из Telegram...', 'info');
-    
+    showNotification(`Загрузка сообщений из ${channels.length} каналов...`, 'info');
+
     try {
-        const response = await fetch(`${API_BASE}/api/fetch-messages?channel=${encodeURIComponent(channel)}`, {
-            method: 'POST'
+        // Send channels as JSON array in request body
+        const response = await fetch(`${API_BASE}/api/fetch-messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ channels: channels })
         });
-        
+
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
         }
-        
+
         const result = await response.json();
-        showNotification(`Загружено ${result.total_messages} сообщений`, 'success');
-        
+        showNotification(`Загружено ${result.total_messages} сообщений из ${channels.length} каналов`, 'success');
+
         // Reload with current filters
         await applyFilters();
     } catch (error) {
@@ -279,21 +327,22 @@ function createMessageCard(msg) {
             <div class="message-header">
                 <span class="message-date">📅 ${date}</span>
                 <div class="message-meta">
+                    ${msg.channel ? `<span class="meta-badge channel-badge">📺 ${msg.channel}</span>` : ''}
                     ${msg.price ? `<span class="meta-badge price-badge">💰 ${priceText}</span>` : ''}
                     ${msg.views ? `<span class="meta-badge views-badge">👁 ${msg.views} просм.</span>` : ''}
                 </div>
             </div>
-            
+
             ${photosHtml}
-            
+
             ${msg.location && msg.location.length > 0 ? `
                 <div class="message-locations">
                     <strong>📍 Локация:</strong> ${locationText}
                 </div>
             ` : ''}
-            
+
             <div class="message-text">${escapeHtml(msg.text)}</div>
-            
+
             <div class="message-footer">
                 <a href="${msg.link}" target="_blank" class="message-link">
                     📱 Открыть в Telegram
@@ -493,46 +542,6 @@ function showLoading(show) {
     }
 }
 
-// Load channel information
-async function loadChannelInfo() {
-    const channel = document.getElementById('channelName').value.trim();
-    
-    if (!channel) {
-        showNotification('Сначала укажите канал!', 'error');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/api/channel-info?channel=${encodeURIComponent(channel)}`);
-        const info = await response.json();
-        
-        const content = `
-            <p><strong>Название:</strong> ${info.title || 'N/A'}</p>
-            <p><strong>Username:</strong> @${info.username || 'N/A'}</p>
-            <p><strong>Участников:</strong> ${info.participants_count || 'N/A'}</p>
-            ${info.description ? `<p><strong>Описание:</strong> ${info.description}</p>` : ''}
-        `;
-        
-        document.getElementById('channelInfoContent').innerHTML = content;
-        document.getElementById('channelInfoModal').style.display = 'flex';
-    } catch (error) {
-        console.error('Error loading channel info:', error);
-        showNotification('Ошибка загрузки информации о канале', 'error');
-    }
-}
-
-// Close modal
-function closeModal() {
-    document.getElementById('channelInfoModal').style.display = 'none';
-}
-
-// Close modal on outside click
-window.onclick = function(event) {
-    const modal = document.getElementById('channelInfoModal');
-    if (event.target === modal) {
-        closeModal();
-    }
-}
 
 // Show notification (simple implementation)
 function showNotification(message, type) {
@@ -566,14 +575,14 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Allow Enter key to submit filters or save channel
+// Allow Enter key to submit filters or add channel
 document.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
-        if (e.target.id === 'channelName') {
-            saveChannel();
+        if (e.target.id === 'channelInput') {
+            addChannel();
         } else if (
-            e.target.id === 'minPrice' || 
-            e.target.id === 'maxPrice' || 
+            e.target.id === 'minPrice' ||
+            e.target.id === 'maxPrice' ||
             e.target.id === 'location' ||
             e.target.id === 'excludeAreas'
         ) {

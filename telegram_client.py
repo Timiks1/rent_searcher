@@ -94,6 +94,10 @@ class TelegramChannelClient:
         messages = []
         
         try:
+            # FAIL FAST: Channel name must be set
+            if not self.channel_name:
+                raise ValueError("Channel name is not set. Please configure TELEGRAM_CHANNEL in .env file.")
+            
             # Get the channel entity
             channel = await self.client.get_entity(self.channel_name)
             
@@ -154,27 +158,42 @@ class TelegramChannelClient:
                 print(f"  Oldest: {oldest}")
             return messages
             
+        except ValueError as e:
+            # Re-raise ValueError as-is (these are our validation errors)
+            raise
         except Exception as e:
+            error_msg = str(e)
+            if "UsernameInvalidError" in error_msg or "Nobody is using this username" in error_msg:
+                raise ValueError(
+                    f"Invalid channel name: '{self.channel_name}'. "
+                    f"Please check that the channel exists and the name is correct. "
+                    f"Channel names should be like '@channelname' or a numeric channel ID."
+                ) from e
             print(f"Error fetching messages: {e}")
             raise
             
     async def get_channel_info(self) -> Dict[str, Any]:
         """Get information about the channel
-        
+
         FAIL FAST: If channel doesn't exist or API fails - raise exception
         """
         if not self.client:
             await self.connect()
-        
+
         assert self.channel_name, "Channel name must be set"
+
+        # Get full channel info including description
+        from telethon.tl.functions.channels import GetFullChannelRequest
+
         channel = await self.client.get_entity(self.channel_name)
-        
+        full_channel = await self.client(GetFullChannelRequest(channel))
+
         # FAIL FAST: Channel fields MUST exist
         return {
             'title': channel.title,
             'username': channel.username,
-            'participants_count': channel.participants_count,
-            'description': channel.about
+            'participants_count': full_channel.full_chat.participants_count if hasattr(full_channel.full_chat, 'participants_count') else None,
+            'description': full_channel.full_chat.about if hasattr(full_channel.full_chat, 'about') else None
         }
 
 
