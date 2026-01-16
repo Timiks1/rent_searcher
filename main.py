@@ -45,12 +45,13 @@ class MessageResponse(BaseModel):
     text: str
     views: int
     link: str
-    
+
     # Optional fields (can be missing)
     price: Optional[int] = None
     location: List[str] = []
     photo_ids: List[int] = []
     raw_text: Optional[str] = None
+    channel: Optional[str] = None  # Source channel
 
 @app.on_event("startup")
 async def startup_event():
@@ -94,56 +95,87 @@ async def get_current_channel():
         "source": "runtime" if telegram_client.channel_name != os.getenv('TELEGRAM_CHANNEL') else "env"
     }
 
-async def _fetch_and_cache_messages(days: int = 30, channel: Optional[str] = None):
-    """Internal helper function to fetch and cache messages
-    
+@app.get("/api/current-channels")
+async def get_current_channels():
+    """Get the currently configured channels"""
+    # Support both single channel from env and multiple channels
+    env_channels = os.getenv('TELEGRAM_CHANNEL', '')
+    channels = [env_channels] if env_channels else []
+    return {
+        "channels": channels,
+        "source": "env"
+    }
+
+async def _fetch_and_cache_messages(days: int = 30, channels: Optional[List[str]] = None):
+    """Internal helper function to fetch and cache messages from multiple channels
+
     FAIL FAST: Let errors propagate
     """
     global messages_cache, cache_timestamp
-    
-    if channel:
-        telegram_client.channel_name = channel
-    
-    # FAIL FAST: Channel name must be set
-    if not telegram_client.channel_name:
+
+    # If no channels provided, try to use env variable
+    if not channels:
+        env_channel = os.getenv('TELEGRAM_CHANNEL', '')
+        if env_channel:
+            channels = [env_channel]
+
+    # FAIL FAST: At least one channel must be set
+    if not channels or len(channels) == 0:
         raise HTTPException(
             status_code=400,
-            detail="Telegram channel not configured. Please set TELEGRAM_CHANNEL in .env file or provide 'channel' parameter."
+            detail="No Telegram channels configured. Please provide 'channels' parameter."
         )
-    
-    # Fetch and parse messages
-    try:
-        messages = await telegram_client.fetch_messages(days=days)
-    except ValueError as e:
-        # Convert ValueError to HTTPException for better API responses
-        raise HTTPException(status_code=400, detail=str(e))
-    
-    parsed_messages = []
-    for msg in messages:
-        parsed_data = message_parser.parse_message(msg['text'], existing_data=msg)
-        msg.update(parsed_data)
-        parsed_messages.append(msg)
-    
+
+    # Fetch and parse messages from all channels
+    all_parsed_messages = []
+
+    for channel in channels:
+        try:
+            # Fetch messages from this channel
+            telegram_client.channel_name = channel
+            messages = await telegram_client.fetch_messages(days=days)
+
+            # Parse messages
+            for msg in messages:
+                parsed_data = message_parser.parse_message(msg['text'], existing_data=msg)
+                msg.update(parsed_data)
+                # Add channel source to each message
+                msg['channel'] = channel
+                all_parsed_messages.append(msg)
+
+        except ValueError as e:
+            # Log error but continue with other channels
+            print(f"Error fetching from {channel}: {e}")
+            continue
+        except Exception as e:
+            print(f"Unexpected error fetching from {channel}: {e}")
+            continue
+
     # Update cache
-    messages_cache = parsed_messages
+    messages_cache = all_parsed_messages
     cache_timestamp = datetime.now()
-    
+
     return {
         "status": "success",
-        "total_messages": len(parsed_messages),
+        "total_messages": len(all_parsed_messages),
+        "channels_processed": len(channels),
         "cache_updated": cache_timestamp.isoformat()
     }
 
+class FetchMessagesRequest(BaseModel):
+    channels: List[str]
+    days: int = 30
+
 @app.post("/api/fetch-messages")
-async def fetch_messages(
-    days: int = Query(30, ge=1, le=90),
-    channel: Optional[str] = Query(None)
-):
-    """Fetch messages from Telegram channel
-    
+async def fetch_messages(request: FetchMessagesRequest):
+    """Fetch messages from multiple Telegram channels
+
     FAIL FAST: Let errors propagate
     """
-    return await _fetch_and_cache_messages(days=days, channel=channel)
+    if request.days < 1 or request.days > 90:
+        raise HTTPException(status_code=400, detail="Days must be between 1 and 90")
+
+    return await _fetch_and_cache_messages(days=request.days, channels=request.channels)
 
 @app.get("/api/photo/{message_id}")
 async def download_photo(message_id: int):

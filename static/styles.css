@@ -116,6 +116,82 @@ header h1 {
     padding: 10px 15px;
 }
 
+/* Channel input and list styles */
+.channel-input-wrapper {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.channel-input-wrapper input {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.channel-input-wrapper input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.channels-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.empty-channels {
+    padding: 20px;
+    text-align: center;
+    color: #888;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 2px dashed #e5e7eb;
+}
+
+.channel-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    color: white;
+    transition: transform 0.2s;
+}
+
+.channel-item:hover {
+    transform: translateX(5px);
+}
+
+.channel-name {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.btn-remove {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-remove:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
 .filters-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -323,6 +399,11 @@ header h1 {
 
 .views-badge {
     background: #f59e0b;
+    color: white;
+}
+
+.channel-badge {
+    background: #8b5cf6;
     color: white;
 }
 

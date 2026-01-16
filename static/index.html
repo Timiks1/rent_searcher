@@ -37,15 +37,18 @@
             
             <div class="channel-section">
                 <div class="filter-group channel-input-group">
-                    <label for="channelName">
-                        📺 Telegram канал
+                    <label for="channelInput">
+                        📺 Telegram каналы
                         <span class="hint">(например: @arenda_kvartir)</span>
                     </label>
-                    <div class="input-with-button">
-                        <input type="text" id="channelName" placeholder="@channel_name">
-                        <button class="btn btn-icon" onclick="saveChannel()" title="Сохранить канал">
-                            💾
+                    <div class="channel-input-wrapper">
+                        <input type="text" id="channelInput" placeholder="@channel_name">
+                        <button class="btn btn-primary" onclick="addChannel()">
+                            ➕ Добавить
                         </button>
+                    </div>
+                    <div id="channelsList" class="channels-list">
+                        <!-- Channels will be added here dynamically -->
                     </div>
                 </div>
             </div>
@@ -99,9 +102,6 @@
                 <button class="btn btn-success" onclick="refreshMessages()">
                     ⟳ Обновить сообщения
                 </button>
-                <button class="btn btn-info" onclick="loadChannelInfo()">
-                    ℹ️ Информация о канале
-                </button>
             </div>
         </div>
 
@@ -119,14 +119,6 @@
                     <p>Нажмите "Обновить сообщения" для загрузки объявлений</p>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div id="channelInfoModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>Информация о канале</h2>
-            <div id="channelInfoContent"></div>
         </div>
     </div>
 

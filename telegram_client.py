@@ -174,21 +174,26 @@ class TelegramChannelClient:
             
     async def get_channel_info(self) -> Dict[str, Any]:
         """Get information about the channel
-        
+
         FAIL FAST: If channel doesn't exist or API fails - raise exception
         """
         if not self.client:
             await self.connect()
-        
+
         assert self.channel_name, "Channel name must be set"
+
+        # Get full channel info including description
+        from telethon.tl.functions.channels import GetFullChannelRequest
+
         channel = await self.client.get_entity(self.channel_name)
-        
+        full_channel = await self.client(GetFullChannelRequest(channel))
+
         # FAIL FAST: Channel fields MUST exist
         return {
             'title': channel.title,
             'username': channel.username,
-            'participants_count': channel.participants_count,
-            'description': channel.about
+            'participants_count': full_channel.full_chat.participants_count if hasattr(full_channel.full_chat, 'participants_count') else None,
+            'description': full_channel.full_chat.about if hasattr(full_channel.full_chat, 'about') else None
         }
 
 
