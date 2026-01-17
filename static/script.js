@@ -199,7 +199,8 @@ async function refreshMessages() {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            const errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
+            throw new Error(errorMessage);
         }
 
         const result = await response.json();
@@ -231,15 +232,29 @@ async function lazyLoadPhoto(placeholder) {
     const photoId = placeholder.dataset.photoId;
     const msgId = placeholder.dataset.msgId;
     const photoIndex = parseInt(placeholder.dataset.photoIndex);
-    
-    if (!photoId) return;
-    
+    const channel = placeholder.dataset.channel;
+
+    if (!photoId) {
+        placeholder.innerHTML = '<div class="photo-error">⚠️ Ошибка</div>';
+        return;
+    }
+
+    if (!channel || channel === '') {
+        console.error(`❌ Missing channel for photo ${photoId}`);
+        placeholder.innerHTML = '<div class="photo-error">⚠️ Канал не указан</div>';
+        return;
+    }
+
     try {
-        const response = await fetch(`${API_BASE}/api/photo/${photoId}`);
-        if (!response.ok) throw new Error('Photo download failed');
-        
+        const url = `${API_BASE}/api/photo/${photoId}?channel=${encodeURIComponent(channel)}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`Photo download failed: ${response.status}`);
+        }
+
         const data = await response.json();
-        
+
         // Replace placeholder with actual image
         const img = document.createElement('img');
         img.src = data.photo_url;
@@ -249,12 +264,11 @@ async function lazyLoadPhoto(placeholder) {
         img.dataset.msgId = msgId;
         img.dataset.photoIndex = photoIndex;
         img.onclick = () => openPhotoModal(img);
-        
+
         placeholder.replaceWith(img);
-        console.log(`✅ Loaded photo ${photoId}`);
     } catch (error) {
         console.error(`❌ Failed to load photo ${photoId}:`, error);
-        placeholder.innerHTML = '<div class="photo-error">⚠️ Ошибка</div>';
+        placeholder.innerHTML = '<div class="photo-error">⚠️ Ошибка загрузки</div>';
     }
 }
 
@@ -281,20 +295,16 @@ function setupPhotoLazyLoading() {
 function displayMessages(messages) {
     const messagesList = document.getElementById('messagesList');
     const resultsCount = document.getElementById('resultsCount');
-    
+
     resultsCount.textContent = `${messages.length} объявлений`;
-    
+
     if (messages.length === 0) {
         displayEmptyState('Нет объявлений, соответствующих критериям');
         return;
     }
-    
-    // Debug: Check photo_ids
-    const withPhotos = messages.filter(m => m.photo_ids && m.photo_ids.length > 0);
-    console.log(`📸 Messages with photos: ${withPhotos.length}/${messages.length}`);
-    
+
     messagesList.innerHTML = messages.map(msg => createMessageCard(msg)).join('');
-    
+
     // Setup lazy loading for photos
     setupPhotoLazyLoading();
 }
@@ -310,11 +320,10 @@ function createMessageCard(msg) {
     // Create photo gallery HTML with lazy loading
     let photosHtml = '';
     if (msg.photo_ids && Array.isArray(msg.photo_ids) && msg.photo_ids.length > 0) {
-        console.log(`🖼️ Message ${msg.id} has ${msg.photo_ids.length} photos (lazy loading)`);
         photosHtml = `
             <div class="message-photos">
                 ${msg.photo_ids.map((photoId, index) => `
-                    <div class="message-photo-placeholder" data-photo-id="${photoId}" data-msg-id="${msg.id}" data-photo-index="${index}">
+                    <div class="message-photo-placeholder" data-photo-id="${photoId}" data-msg-id="${msg.id}" data-photo-index="${index}" data-channel="${msg.channel || ''}">
                         <div class="photo-loader">📸 Загрузка...</div>
                     </div>
                 `).join('')}
@@ -377,12 +386,10 @@ function openPhotoModal(imgElement) {
             });
         
         currentPhotoGallery = allPhotoElements.map(img => img.src);
-        
+
         // Find the index of clicked photo in the gallery
         currentPhotoIndex = allPhotoElements.findIndex(img => img === imgElement);
         if (currentPhotoIndex === -1) currentPhotoIndex = 0;
-        
-        console.log(`📸 Opening gallery: ${currentPhotoIndex + 1}/${currentPhotoGallery.length} photos`);
     } else {
         currentPhotoGallery = [imgElement.src];
         currentPhotoIndex = 0;
@@ -545,7 +552,10 @@ function showLoading(show) {
 
 // Show notification (simple implementation)
 function showNotification(message, type) {
-    console.log(`[${type.toUpperCase()}] ${message}`);
+    // Only log errors to console
+    if (type === 'error') {
+        console.error(message);
+    }
     // You can implement a proper toast notification system here
 }
 
