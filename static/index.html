@@ -1,49 +1,58 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Фильтр Аренды Жилья</title>
+    <title>Telegram Фільтр Оренди Житла</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/translations.js"></script>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🏠 Фильтр объявлений об аренде</h1>
-            <p class="subtitle">Поиск жилья из Telegram канала</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div>
+                    <h1 data-i18n="app.title">🏠 Фільтр оголошень про оренду</h1>
+                    <p class="subtitle" data-i18n="app.subtitle">Пошук житла з Telegram каналу</p>
+                </div>
+                <select id="languageSelector" onchange="switchLanguage(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.2); color: white; font-size: 0.9rem; cursor: pointer;">
+                    <option value="ua">🇺🇦 Українська</option>
+                    <option value="vi">🇻🇳 Tiếng Việt</option>
+                </select>
+            </div>
         </header>
 
         <div class="stats-bar" id="statsBar">
             <div class="stat-item">
-                <span class="stat-label">Всего объявлений:</span>
+                <span class="stat-label" data-i18n="stats.total">Всего объявлений:</span>
                 <span class="stat-value" id="totalMessages">0</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">С ценой:</span>
+                <span class="stat-label" data-i18n="stats.with_price">С ценой:</span>
                 <span class="stat-value" id="messagesWithPrice">0</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">С локацией:</span>
+                <span class="stat-label" data-i18n="stats.with_location">С локацией:</span>
                 <span class="stat-value" id="messagesWithLocation">0</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Обновлено:</span>
+                <span class="stat-label" data-i18n="stats.updated">Обновлено:</span>
                 <span class="stat-value" id="cacheAge">-</span>
             </div>
         </div>
 
         <div class="filters-section">
-            <h2>Настройки и фильтры</h2>
-            
+            <h2 data-i18n="filters.title">Настройки и фильтры</h2>
+
             <div class="channel-section">
                 <div class="filter-group channel-input-group">
                     <label for="channelInput">
-                        📺 Telegram каналы
-                        <span class="hint">(например: @arenda_kvartir)</span>
+                        <span data-i18n="filters.channels">📺 Telegram каналы</span>
+                        <span class="hint" data-i18n="filters.channels_hint">(например: @arenda_kvartir)</span>
                     </label>
                     <div class="channel-input-wrapper">
-                        <input type="text" id="channelInput" placeholder="@channel_name">
-                        <button class="btn btn-primary" onclick="addChannel()">
+                        <input type="text" id="channelInput" placeholder="@channel_name" data-i18n="placeholder.channel">
+                        <button class="btn btn-primary" onclick="addChannel()" data-i18n="filters.add_channel">
                             ➕ Добавить
                         </button>
                     </div>
@@ -53,53 +62,53 @@
                 </div>
             </div>
 
-            <h3>Фильтры поиска</h3>
+            <h3 data-i18n="filters.search_title">Фильтры поиска</h3>
             <div class="filters-grid">
                 <div class="filter-group">
-                    <label for="minPrice">Минимальная цена (млн VND или USD)</label>
-                    <input type="number" id="minPrice" placeholder="От 0">
+                    <label for="minPrice" data-i18n="filters.min_price">Минимальная цена (млн VND или USD)</label>
+                    <input type="number" id="minPrice" placeholder="От 0" data-i18n="placeholder.min_price">
                 </div>
                 <div class="filter-group">
-                    <label for="maxPrice">Максимальная цена (млн VND или USD)</label>
-                    <input type="number" id="maxPrice" placeholder="До ∞">
+                    <label for="maxPrice" data-i18n="filters.max_price">Максимальная цена (млн VND или USD)</label>
+                    <input type="number" id="maxPrice" placeholder="До ∞" data-i18n="placeholder.max_price">
                 </div>
                 <div class="filter-group">
                     <label for="location">
-                        Включить локации (whitelist)
-                        <span class="hint">только с этими районами</span>
+                        <span data-i18n="filters.include_locations">Включить локации (whitelist)</span>
+                        <span class="hint" data-i18n="filters.include_hint">только с этими районами</span>
                     </label>
-                    <input type="text" id="location" placeholder="Mỹ An, An Thượng...">
+                    <input type="text" id="location" placeholder="Mỹ An, An Thượng..." data-i18n="placeholder.locations">
                 </div>
                 <div class="filter-group">
                     <label for="excludeAreas">
-                        ⛔ Исключить районы (blacklist)
-                        <span class="hint">поиск по всему тексту, через запятую</span>
+                        <span data-i18n="filters.exclude_areas">⛔ Исключить районы (blacklist)</span>
+                        <span class="hint" data-i18n="filters.exclude_hint">поиск по всему тексту, через запятую</span>
                     </label>
-                    <input type="text" id="excludeAreas" placeholder="my an, hoa hai, khue my...">
+                    <input type="text" id="excludeAreas" placeholder="my an, hoa hai, khue my..." data-i18n="placeholder.exclude">
                 </div>
                 <div class="filter-group">
                     <label for="sortBy">
-                        📊 Сортировка
-                        <span class="hint">порядок отображения</span>
+                        <span data-i18n="filters.sort">📊 Сортировка</span>
+                        <span class="hint" data-i18n="filters.sort_hint">порядок отображения</span>
                     </label>
                     <select id="sortBy" class="sort-select">
-                        <option value="date_desc">Сначала новые</option>
-                        <option value="date_asc">Сначала старые</option>
-                        <option value="price_desc">Цена: от большей к меньшей</option>
-                        <option value="price_asc">Цена: от меньшей к большей</option>
+                        <option value="date_desc" data-i18n="sort.date_desc">Сначала новые</option>
+                        <option value="date_asc" data-i18n="sort.date_asc">Сначала старые</option>
+                        <option value="price_desc" data-i18n="sort.price_desc">Цена: от большей к меньшей</option>
+                        <option value="price_asc" data-i18n="sort.price_asc">Цена: от меньшей к большей</option>
                     </select>
                 </div>
                 <div class="filter-actions">
-                    <button class="btn btn-primary" onclick="applyFilters()">
+                    <button class="btn btn-primary" onclick="applyFilters()" data-i18n="btn.apply_filters">
                         🔍 Применить фильтры
                     </button>
-                    <button class="btn btn-secondary" onclick="resetFilters()">
+                    <button class="btn btn-secondary" onclick="resetFilters()" data-i18n="btn.reset">
                         ↺ Сбросить
                     </button>
                 </div>
             </div>
             <div class="action-buttons">
-                <button class="btn btn-success" onclick="refreshMessages()">
+                <button class="btn btn-success" onclick="refreshMessages()" data-i18n="btn.refresh">
                     ⟳ Обновить сообщения
                 </button>
             </div>
@@ -107,16 +116,16 @@
 
         <div class="results-section">
             <div class="results-header">
-                <h2>Результаты</h2>
-                <span class="results-count" id="resultsCount">0 объявлений</span>
+                <h2 data-i18n="results.title">Результаты</h2>
+                <span class="results-count" id="resultsCount"><span id="resultsCountNumber">0</span> <span data-i18n="results.count">объявлений</span></span>
             </div>
             <div id="loadingIndicator" class="loading-indicator" style="display: none;">
                 <div class="spinner"></div>
-                <p>Загрузка...</p>
+                <p data-i18n="results.loading">Загрузка...</p>
             </div>
             <div id="messagesList" class="messages-list">
                 <div class="empty-state">
-                    <p>Нажмите "Обновить сообщения" для загрузки объявлений</p>
+                    <p data-i18n="results.empty">Нажмите "Обновить сообщения" для загрузки объявлений</p>
                 </div>
             </div>
         </div>
