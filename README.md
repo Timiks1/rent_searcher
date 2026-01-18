@@ -9,12 +9,15 @@ A web application for filtering rental property listings from Telegram channels 
 - 📍 Location search (city, district, area)
 - 🚫 Area exclusion (blacklist unwanted locations)
 - 🔄 Multiple sorting options (date, price)
-- 📸 Photo gallery with lazy loading
+- 📸 Photo gallery with lazy loading and navigation
+- 🖼️ Full-screen photo viewer with gallery navigation
 - 🎨 Modern web interface
 - 📊 Statistics dashboard
 - ⚡ Data caching for fast access
 - 🌐 Dynamic multi-channel management
 - 📺 Channel source display for each listing
+- 🌍 **Multi-language support** (Ukrainian 🇺🇦 / Vietnamese 🇻🇳)
+- 🔐 **Web-based QR authentication** - no terminal needed!
 
 ## Requirements
 
@@ -79,24 +82,9 @@ PORT=8000
 
 ## Running
 
-### First Run (Telegram Authentication)
-
-On first run, you need to authenticate with Telegram **using QR code**:
-
-```bash
-python qr_login.py
-```
-
-**A QR code will appear in the terminal:**
-
-1. Open Telegram on your phone
-2. Go to **Settings** → **Devices** → **Link Desktop Device**
-3. Scan the QR code from terminal
-4. ✅ Done! A session file `session_name.session` will be created
-
-💡 **QR login is more secure** - no need to enter SMS codes!
-
 ### Start the web server
+
+First, start the application:
 
 ```bash
 python main.py
@@ -110,34 +98,68 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 Open your browser and go to: http://localhost:8000
 
+### First Time: Telegram Authentication
+
+If you haven't authenticated yet, you'll need to log in with Telegram:
+
+**Option 1: Web-based QR Login (Recommended)** 🌐
+
+1. Navigate to http://localhost:8000/register in your browser
+2. A QR code will appear automatically
+3. Open Telegram on your phone
+4. Go to **Settings** → **Devices** → **Link Desktop Device**
+5. Scan the QR code from the browser
+6. ✅ You'll be redirected to the main page automatically!
+
+**Option 2: Terminal QR Login** 💻
+
+```bash
+python qr_login.py
+```
+
+A QR code will appear in the terminal - scan it the same way as above.
+
+💡 **QR login is more secure** - no SMS codes needed!
+
 ## Usage
 
 ### Web Interface
 
-1. **Set Telegram Channels** - enter multiple channel names (one per line, e.g., `@arenda_kvartir`) and click 💾
-2. **Refresh Messages** - fetch latest messages from **all specified channels simultaneously**
-3. **Set Filters**:
+1. **Choose Language** 🌍 - select Ukrainian 🇺🇦 or Vietnamese 🇻🇳 from the top-right selector (preference is saved)
+2. **Set Telegram Channels** - enter channel names (e.g., `@arenda_kvartir`) and click ➕ to add
+3. **Refresh Messages** ⟳ - fetch latest messages from **all specified channels simultaneously**
+4. **Set Filters**:
    - Minimum price (VND/USD)
    - Maximum price (VND/USD)
-   - Location (e.g., "Da Nang", "District 1", "An Thuong")
-   - Exclude areas (e.g., "Son Tra, Lien Chieu")
-4. **Apply Filters** - show only matching listings
-5. **Sort** - by date or price (ascending/descending)
-6. **Reset** - clear all filters
+   - Location whitelist (e.g., "Da Nang", "District 1", "An Thuong")
+   - Exclude areas blacklist (e.g., "Son Tra, Lien Chieu")
+5. **Apply Filters** 🔍 - show only matching listings
+6. **Sort** 📊 - by date or price (ascending/descending)
+7. **Reset** ↺ - clear all filters
+8. **View Photos** 📸 - click any photo to open full-screen gallery with navigation (← →)
 
 💡 **Multiple channels can be managed dynamically** in the web interface - no need to edit `.env` file!
 📺 **Each listing shows its source channel** so you know where it came from.
+🌍 **All UI elements are translated** - switch languages anytime with one click!
 
 ### API Endpoints
 
 The application provides a REST API:
 
+**Main Pages:**
 - `GET /` - Main page (web interface)
+- `GET /register` - QR authentication page
+
+**Authentication:**
+- `GET /api/qr-login` - Generate QR code for authentication
+- `GET /api/qr-login-status` - Check QR authentication status
+
+**Channels & Messages:**
 - `GET /api/channel-info?channel=@name` - Get channel information
 - `GET /api/current-channels` - Get currently configured channels
 - `POST /api/fetch-messages` - Fetch messages from multiple channels (JSON body: `{"channels": ["@ch1", "@ch2"], "days": 30}`)
 - `GET /api/messages?min_price=X&max_price=Y&location=Z` - Get filtered messages
-- `GET /api/photo/{message_id}` - Download photo (lazy loading)
+- `GET /api/photo/{photo_id}?channel=@name` - Download photo (lazy loading)
 - `GET /api/stats` - Statistics for loaded messages
 
 #### Request Examples:
@@ -168,19 +190,21 @@ curl -X POST "http://localhost:8000/api/fetch-messages" \
 
 ```
 telegram rent/
-├── main.py                 # FastAPI web server
+├── main.py                 # FastAPI web server with QR auth endpoints
 ├── telegram_client.py      # Telegram API client
 ├── message_parser.py       # Parser for extracting price and location
-├── qr_login.py            # QR code authentication
+├── qr_login.py            # Terminal QR code authentication
 ├── requirements.txt        # Python dependencies
 ├── .env                    # Configuration (create manually)
 ├── .env.example           # Example configuration
 ├── .gitignore             # Ignored files
 ├── README.md              # Documentation
 └── static/                # Web interface
-    ├── index.html         # HTML page
+    ├── index.html         # Main page (Ukrainian/Vietnamese)
+    ├── register.html      # QR authentication page
     ├── styles.css         # Styles
-    ├── script.js          # JavaScript code
+    ├── script.js          # Main JavaScript code
+    ├── translations.js    # i18n translations (UA/VI)
     └── photos/            # Downloaded photos cache
 ```
 
@@ -204,16 +228,61 @@ The parser automatically recognizes:
 
 To add new patterns, edit the `message_parser.py` file.
 
+## Internationalization (i18n)
+
+The application supports multiple languages with easy switching:
+
+### Supported Languages
+
+- 🇺🇦 **Ukrainian (Українська)** - Default language
+- 🇻🇳 **Vietnamese (Tiếng Việt)** - Full translation
+
+### How It Works
+
+- **Client-side translations** using `translations.js`
+- **localStorage persistence** - language choice is saved in browser
+- **Dynamic switching** - change language without page reload
+- **Complete coverage** - all UI elements, notifications, and messages are translated
+- **Data-driven** - uses `data-i18n` attributes for automatic translation
+
+### Adding New Languages
+
+To add a new language (e.g., English):
+
+1. Open `static/translations.js`
+2. Add a new language object:
+```javascript
+en: {
+    'app.title': '🏠 Rental Listings Filter',
+    'app.subtitle': 'Search housing from Telegram channels',
+    // ... add all translation keys
+}
+```
+3. Add option to language selector in `static/index.html`:
+```html
+<option value="en">🇬🇧 English</option>
+```
+4. Translations will apply automatically!
+
 ## Troubleshooting
 
 ### Authentication Error
 
-If you get an error when running `qr_login.py`:
+**Web-based QR login** (recommended):
+- Navigate to `/register` page in browser
+- QR code should appear automatically
+- If you see "already authorized", you're good to go!
+- Check browser console (F12) for errors
 
+**Terminal QR login**:
 - Check that API_ID and API_HASH are correct
 - Verify phone number is in international format (+7...)
 - Check internet connection
 - Make sure you scan the QR code within the time limit
+
+**Session issues**:
+- Delete `session_name.session` file and re-authenticate
+- Make sure only one QR login is running at a time
 
 ### Messages Not Loading
 
@@ -247,12 +316,15 @@ If you get an error when running `qr_login.py`:
 
 ## Performance
 
-### Lazy Loading
+### Lazy Loading & Photo Gallery
 
-- Photos are downloaded **on-demand** when visible
+- Photos are downloaded **on-demand** when visible (Intersection Observer API)
 - First load: ~5 seconds (metadata only)
 - Photos load progressively as you scroll
 - Cached photos load instantly
+- **Full-screen photo viewer** with keyboard navigation (← → arrows, ESC to close)
+- Multiple photos per listing are displayed as a gallery
+- Click on photo sides (left/right 30%) for quick navigation
 
 ### Fail Fast Philosophy
 
@@ -283,7 +355,34 @@ If you have questions or found a bug:
 - [ ] Add more filters (rooms, square footage)
 - [ ] Export results to CSV/Excel
 - [ ] Telegram bot for management
-- [ ] Multi-language interface
+- [x] ~~Multi-language interface~~ ✅ **Implemented** (Ukrainian/Vietnamese)
+- [x] ~~Web-based QR authentication~~ ✅ **Implemented**
+- [x] ~~Photo gallery with navigation~~ ✅ **Implemented**
 - [ ] Price history tracking
 - [ ] Favorite listings
 - [ ] Email alerts
+- [ ] More language options (English, Russian, Thai, etc.)
+
+---
+
+## Recent Updates
+
+### Version 2.0 (Latest)
+
+✨ **Major Features Added:**
+
+- 🌍 **Multi-language support** - Ukrainian and Vietnamese with easy language switching
+- 🔐 **Web-based QR authentication** - no need for terminal, authenticate directly in browser
+- 🖼️ **Enhanced photo gallery** - full-screen viewer with keyboard navigation
+- 📺 **Multi-channel support** - fetch from multiple Telegram channels simultaneously
+- ⚡ **Performance improvements** - lazy loading, caching, and optimized rendering
+
+**Breaking Changes:**
+- Default language changed from Russian to Ukrainian
+- QR login now available via web interface at `/register`
+
+### Version 1.0
+
+- Initial release with basic filtering capabilities
+- Terminal-based QR authentication
+- Single channel support
