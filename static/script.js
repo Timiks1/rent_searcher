@@ -6,6 +6,9 @@ let channels = []; // Array of channel names
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Apply translations first
+    applyTranslations();
+
     loadStats();
     loadCurrentChannels();
 
@@ -39,16 +42,16 @@ async function loadStats() {
         document.getElementById('messagesWithLocation').textContent = stats.messages_with_location;
         
         if (stats.cache_age_minutes !== null) {
-            const ageText = stats.cache_age_minutes < 1 
-                ? 'Только что' 
-                : `${Math.round(stats.cache_age_minutes)} мин назад`;
+            const ageText = stats.cache_age_minutes < 1
+                ? t('cache.just_now')
+                : t('cache.minutes_ago', {minutes: Math.round(stats.cache_age_minutes)});
             document.getElementById('cacheAge').textContent = ageText;
         } else {
-            document.getElementById('cacheAge').textContent = 'Не загружено';
+            document.getElementById('cacheAge').textContent = t('cache.not_loaded');
         }
     } catch (error) {
         console.error('Error loading stats:', error);
-        showNotification('Ошибка загрузки статистики', 'error');
+        showNotification(t('error.stats_loading'), 'error');
     }
 }
 
@@ -80,12 +83,12 @@ async function applyFilters() {
         currentMessages = messages;
         displayMessages(messages);
         loadStats();
-        
-        showNotification(`Найдено ${messages.length} объявлений`, 'success');
+
+        showNotification(t('notif.found_messages', {count: messages.length}), 'success');
     } catch (error) {
         console.error('Error loading messages:', error);
-        showNotification('Ошибка загрузки сообщений: ' + error.message, 'error');
-        displayEmptyState('Ошибка загрузки данных. Проверьте настройки API.');
+        showNotification(t('error.messages_loading') + ': ' + error.message, 'error');
+        displayEmptyState(t('error.data_loading'));
     } finally {
         showLoading(false);
     }
@@ -97,19 +100,19 @@ function addChannel() {
     const channelName = input.value.trim();
 
     if (!channelName) {
-        showNotification('Введите имя канала', 'error');
+        showNotification(t('notif.enter_channel'), 'error');
         return;
     }
 
     // Validate channel format
     if (!channelName.startsWith('@') && !channelName.match(/^-?\d+$/)) {
-        showNotification('Канал должен начинаться с @ или быть ID', 'error');
+        showNotification(t('notif.channel_invalid'), 'error');
         return;
     }
 
     // Check if channel already exists
     if (channels.includes(channelName)) {
-        showNotification('Этот канал уже добавлен', 'error');
+        showNotification(t('notif.channel_exists'), 'error');
         return;
     }
 
@@ -125,7 +128,7 @@ function addChannel() {
     // Re-render list
     renderChannelsList();
 
-    showNotification(`Канал ${channelName} добавлен`, 'success');
+    showNotification(t('notif.channel_added', {channel: channelName}), 'success');
 }
 
 // Remove channel from the list
@@ -138,7 +141,7 @@ function removeChannel(channelName) {
     // Re-render list
     renderChannelsList();
 
-    showNotification(`Канал ${channelName} удалён`, 'success');
+    showNotification(t('notif.channel_removed', {channel: channelName}), 'success');
 }
 
 // Render channels list
@@ -146,14 +149,14 @@ function renderChannelsList() {
     const container = document.getElementById('channelsList');
 
     if (channels.length === 0) {
-        container.innerHTML = '<div class="empty-channels">Нет добавленных каналов</div>';
+        container.innerHTML = `<div class="empty-channels" data-i18n="filters.no_channels">${t('filters.no_channels')}</div>`;
         return;
     }
 
     container.innerHTML = channels.map(channel => `
         <div class="channel-item">
             <span class="channel-name">📺 ${channel}</span>
-            <button class="btn-remove" onclick="removeChannel('${channel}')" title="Удалить канал">
+            <button class="btn-remove" onclick="removeChannel('${channel}')" title="${t('notif.channel_removed', {channel: ''})}">
                 ✕
             </button>
         </div>
@@ -179,13 +182,13 @@ async function loadCurrentChannels() {
 // Refresh messages from Telegram
 async function refreshMessages() {
     if (channels.length === 0) {
-        showNotification('Сначала добавьте хотя бы один канал!', 'error');
+        showNotification(t('notif.add_channel_first'), 'error');
         document.getElementById('channelInput').focus();
         return;
     }
 
     showLoading(true);
-    showNotification(`Загрузка сообщений из ${channels.length} каналов...`, 'info');
+    showNotification(t('notif.loading_from_channels', {count: channels.length}), 'info');
 
     try {
         // Send channels as JSON array in request body
@@ -204,13 +207,13 @@ async function refreshMessages() {
         }
 
         const result = await response.json();
-        showNotification(`Загружено ${result.total_messages} сообщений из ${channels.length} каналов`, 'success');
+        showNotification(t('notif.loaded_messages', {count: result.total_messages, channels: channels.length}), 'success');
 
         // Reload with current filters
         await applyFilters();
     } catch (error) {
         console.error('Error refreshing messages:', error);
-        showNotification('Ошибка обновления: ' + error.message, 'error');
+        showNotification(t('error.refresh') + ': ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -235,13 +238,13 @@ async function lazyLoadPhoto(placeholder) {
     const channel = placeholder.dataset.channel;
 
     if (!photoId) {
-        placeholder.innerHTML = '<div class="photo-error">⚠️ Ошибка</div>';
+        placeholder.innerHTML = `<div class="photo-error">${t('photo.error')}</div>`;
         return;
     }
 
     if (!channel || channel === '') {
         console.error(`❌ Missing channel for photo ${photoId}`);
-        placeholder.innerHTML = '<div class="photo-error">⚠️ Канал не указан</div>';
+        placeholder.innerHTML = `<div class="photo-error">${t('photo.channel_missing')}</div>`;
         return;
     }
 
@@ -268,7 +271,7 @@ async function lazyLoadPhoto(placeholder) {
         placeholder.replaceWith(img);
     } catch (error) {
         console.error(`❌ Failed to load photo ${photoId}:`, error);
-        placeholder.innerHTML = '<div class="photo-error">⚠️ Ошибка загрузки</div>';
+        placeholder.innerHTML = `<div class="photo-error">${t('photo.error')}</div>`;
     }
 }
 
@@ -294,12 +297,12 @@ function setupPhotoLazyLoading() {
 
 function displayMessages(messages) {
     const messagesList = document.getElementById('messagesList');
-    const resultsCount = document.getElementById('resultsCount');
+    const resultsCountNumber = document.getElementById('resultsCountNumber');
 
-    resultsCount.textContent = `${messages.length} объявлений`;
+    resultsCountNumber.textContent = messages.length;
 
     if (messages.length === 0) {
-        displayEmptyState('Нет объявлений, соответствующих критериям');
+        displayEmptyState(t('notif.no_results'));
         return;
     }
 
@@ -311,11 +314,11 @@ function displayMessages(messages) {
 
 // Create message card HTML
 function createMessageCard(msg) {
-    const date = new Date(msg.date).toLocaleString('ru-RU');
-    const priceText = msg.price ? formatPrice(msg.price) : 'Цена не указана';
-    const locationText = msg.location && msg.location.length > 0 
-        ? msg.location.join(', ') 
-        : 'Локация не указана';
+    const date = new Date(msg.date).toLocaleString('uk-UA');
+    const priceText = msg.price ? formatPrice(msg.price) : t('msg.price_not_set');
+    const locationText = msg.location && msg.location.length > 0
+        ? msg.location.join(', ')
+        : t('msg.location_not_set');
     
     // Create photo gallery HTML with lazy loading
     let photosHtml = '';
@@ -324,7 +327,7 @@ function createMessageCard(msg) {
             <div class="message-photos">
                 ${msg.photo_ids.map((photoId, index) => `
                     <div class="message-photo-placeholder" data-photo-id="${photoId}" data-msg-id="${msg.id}" data-photo-index="${index}" data-channel="${msg.channel || ''}">
-                        <div class="photo-loader">📸 Загрузка...</div>
+                        <div class="photo-loader">${t('photo.loading')}</div>
                     </div>
                 `).join('')}
             </div>
@@ -338,7 +341,7 @@ function createMessageCard(msg) {
                 <div class="message-meta">
                     ${msg.channel ? `<span class="meta-badge channel-badge">📺 ${msg.channel}</span>` : ''}
                     ${msg.price ? `<span class="meta-badge price-badge">💰 ${priceText}</span>` : ''}
-                    ${msg.views ? `<span class="meta-badge views-badge">👁 ${msg.views} просм.</span>` : ''}
+                    ${msg.views ? `<span class="meta-badge views-badge">👁 ${msg.views} ${t('other.views_abbr')}</span>` : ''}
                 </div>
             </div>
 
@@ -354,7 +357,7 @@ function createMessageCard(msg) {
 
             <div class="message-footer">
                 <a href="${msg.link}" target="_blank" class="message-link">
-                    📱 Открыть в Telegram
+                    ${t('msg.open_telegram')}
                 </a>
             </div>
         </div>
@@ -525,9 +528,9 @@ function closePhotoModal() {
 // Display empty state
 function displayEmptyState(message) {
     const messagesList = document.getElementById('messagesList');
-    const resultsCount = document.getElementById('resultsCount');
-    
-    resultsCount.textContent = '0 объявлений';
+    const resultsCountNumber = document.getElementById('resultsCountNumber');
+
+    resultsCountNumber.textContent = '0';
     messagesList.innerHTML = `
         <div class="empty-state">
             <p>${message}</p>

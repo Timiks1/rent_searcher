@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Регистрация Telegram - QR Code</title>
+    <title>Реєстрація Telegram - QR Code</title>
     <style>
         * {
             margin: 0;
@@ -171,27 +171,27 @@
 </head>
 <body>
     <div class="container">
-        <h1>🔐 Авторизация Telegram</h1>
-        <p class="subtitle">Войдите в систему через QR код</p>
+        <h1>🔐 Авторизація Telegram</h1>
+        <p class="subtitle">Увійдіть в систему через QR код</p>
 
         <div class="instructions">
-            <h3>📱 Инструкция:</h3>
+            <h3>📱 Інструкція:</h3>
             <ol>
-                <li>Откройте Telegram на телефоне</li>
-                <li>Перейдите в <strong>Настройки → Устройства</strong></li>
-                <li>Нажмите <strong>"Подключить устройство"</strong></li>
-                <li>Отсканируйте QR код ниже</li>
+                <li>Відкрийте Telegram на телефоні</li>
+                <li>Перейдіть в <strong>Налаштування → Пристрої</strong></li>
+                <li>Натисніть <strong>"Підключити пристрій"</strong></li>
+                <li>Відскануйте QR код нижче</li>
             </ol>
         </div>
 
         <div class="qr-container" id="qrContainer">
             <div class="spinner"></div>
-            <p style="color: #666; margin-top: 15px;">Генерация QR кода...</p>
+            <p style="color: #666; margin-top: 15px;">Генерація QR коду...</p>
         </div>
 
         <div id="statusMessage"></div>
 
-        <a href="/" class="back-link">← Вернуться на главную</a>
+        <a href="/" class="back-link">← Повернутися на головну</a>
     </div>
 
     <script>
@@ -210,7 +210,7 @@
                 if (data.status === 'already_authorized') {
                     qrContainer.innerHTML = `
                         <div class="user-info">
-                            <h2>✅ Вы уже авторизованы!</h2>
+                            <h2>✅ Ви вже авторизовані!</h2>
                             <div class="user-name">👤 ${data.user.first_name}</div>
                             ${data.user.username ? `<p style="color: #065f46; margin-top: 10px;">@${data.user.username}</p>` : ''}
                         </div>
@@ -221,10 +221,10 @@
                 if (data.status === 'qr_ready') {
                     qrContainer.innerHTML = `
                         <img id="qrCode" src="${data.qr_code}" alt="QR Code">
-                        <p style="color: #666; margin-top: 15px; font-size: 0.9rem;">Отсканируйте этот код в Telegram</p>
+                        <p style="color: #666; margin-top: 15px; font-size: 0.9rem;">Відскануйте цей код в Telegram</p>
                     `;
 
-                    statusMessage.innerHTML = '<div class="status waiting">⏳ Ожидание сканирования...</div>';
+                    statusMessage.innerHTML = '<div class="status waiting">⏳ Очікування сканування...</div>';
 
                     // Start checking status
                     startStatusCheck();
@@ -233,7 +233,7 @@
                 console.error('Error loading QR code:', error);
                 document.getElementById('qrContainer').innerHTML = `
                     <div class="status error">
-                        ❌ Ошибка загрузки QR кода: ${error.message}
+                        ❌ Помилка завантаження QR коду: ${error.message}
                     </div>
                 `;
             }
@@ -257,13 +257,13 @@
 
                     qrContainer.innerHTML = `
                         <div class="user-info">
-                            <h2>✅ Успешная авторизация!</h2>
+                            <h2>✅ Успішна авторизація!</h2>
                             <div class="user-name">👤 ${data.user.first_name}</div>
                             ${data.user.username ? `<p style="color: #065f46; margin-top: 10px;">@${data.user.username}</p>` : ''}
                         </div>
                     `;
 
-                    statusMessage.innerHTML = '<div class="status success">✅ Вы успешно вошли в систему!</div>';
+                    statusMessage.innerHTML = '<div class="status success">✅ Ви успішно увійшли в систему!</div>';
 
                     // Redirect to main page after 2 seconds
                     setTimeout(() => {
